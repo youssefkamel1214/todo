@@ -9,6 +9,7 @@ import 'package:TODO/ui/widgets/button.dart';
 import 'package:TODO/ui/widgets/task_tile.dart';
 import 'package:date_picker_timeline/date_picker_timeline.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:TODO/ui/size_config.dart';
@@ -48,6 +49,7 @@ class _HomePageState extends State<HomePage> {
                     _add_Taskbar(),
                     const  SizedBox(height: 15,),
                     _add_Datebar(context),
+                    SizedBox(height: 10,),
                     _show_Task(),
 
                 ],
@@ -126,10 +128,31 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _show_Task() => Expanded(
-    child:TaskTile(Task(id: 0,title: '5ra 3la dma3k'
-    ,note: 'aggawewserr a7aaaaaaaaaaaaaaaa',isCompleted: 0,startTime: '8:18',
-    endTime: '20:40',color: 1))
+  Widget _show_Task() {
+    
+    return Expanded(
+      child: ListView.builder(scrollDirection:
+       SizeConfig.orientation==Orientation.landscape?
+       Axis.horizontal:Axis.vertical,
+        itemCount: _taskController.tasklist.length,
+        itemBuilder:(BuildContext context,index)
+      {
+        Task task = _taskController.tasklist[index];
+        return  AnimationConfiguration.staggeredList(
+          position: index,
+          duration:Duration(milliseconds: 1375) ,
+          child: FadeInAnimation(
+            child: GestureDetector(onTap: ()=>showBottomSheet(context, task),
+              child: TaskTile(task),
+              ),
+          ),
+        );
+      }),
+    );
+    // Expanded(
+    // child:GestureDetector(onTap: ()=>showBottomSheet(context, task),
+    //   child: TaskTile(task),
+    // )
   //  Obx(
   //   (){
   //     if(_taskController.tasklist.isEmpty){
@@ -140,7 +163,7 @@ class _HomePageState extends State<HomePage> {
       
   //   }
   // )
-    );
+  }
 
   Widget _notaskmsg() {
     return Stack(
@@ -187,13 +210,15 @@ class _HomePageState extends State<HomePage> {
             clr: primaryClr),
             _buildBottomSheet(label: 'Delete Task', onTap:()=> Get.back() ,
             clr: primaryClr),
-            Divider(color: Colors.grey,),
+            Divider(color:Get.isDarkMode? Colors.grey:darkGreyClr,),
             _buildBottomSheet(label: 'Cancel', onTap:()=> Get.back() ,
-            clr: primaryClr)
+            clr: primaryClr),
+            SizedBox(height: 20,)
          ],
        ),
        padding: const EdgeInsets.only(top: 4),
        width: SizeConfig.screenWidth,
+       color:Theme.of(context).backgroundColor ,
        height: (SizeConfig.orientation==Orientation.landscape)?
        task.isCompleted==1?SizeConfig.screenHeight*.6:SizeConfig.screenHeight*.8
        :task.isCompleted==1?SizeConfig.screenHeight*.38:SizeConfig.screenHeight*.45,
@@ -206,7 +231,7 @@ class _HomePageState extends State<HomePage> {
       required Color clr,
       bool isClose =false
     }){
-       return GestureDetector(onTap: onTap(),
+       return GestureDetector(onTap: onTap,
          child: Container(
            margin:  const EdgeInsets.symmetric(vertical: 4),
            height: 65,
