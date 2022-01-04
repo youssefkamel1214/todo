@@ -25,12 +25,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
         leading: IconButton(onPressed:(){
           Get.back();
         },
-        icon: const Icon(Icons.arrow_back),
-        color: Get.isDarkMode?Colors.white:Colors.black,
+        icon:  Icon(Icons.arrow_back_ios,
+        color: Get.isDarkMode? Colors.white:darkGreyClr,),
       
         ),
         elevation: 0,
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Theme.of(context).backgroundColor,
         title: Text(_payload.split('|')[0],
         style:  TextStyle(color:Get.isDarkMode? Colors.black:Colors.white),),
         centerTitle: true,

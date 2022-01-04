@@ -31,10 +31,13 @@ class InputField extends StatelessWidget {
                               child:Row(
                                 children: [
                                   Expanded(child: TextFormField(
+                                   controller: textEditingController,
                                     style: Themes().subtitlestyle,
                                     autofocus: false,
                                     readOnly: widget!=null,
-                                    decoration: InputDecoration( hintText: note,
+                                    decoration: InputDecoration(
+                                      hintStyle:widget!=null?Themes().subtitlestyle:TextStyle(fontSize: 16, fontWeight: FontWeight.w500) ,
+                                       hintText: note,
                                       enabledBorder: UnderlineInputBorder(borderSide: BorderSide(
                                       color: Theme.of(context).backgroundColor,width: 0
                                     )),
