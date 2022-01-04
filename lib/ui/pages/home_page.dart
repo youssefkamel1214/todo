@@ -15,6 +15,7 @@ import 'package:get/get.dart';
 import 'package:TODO/ui/size_config.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:loading_indicator/loading_indicator.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -24,7 +25,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  DateTime selcteddate=DateTime.now();
+  bool loaded=false;
+  DateTime selcteddate= DateTime.now() ;
   final TaskController _taskController=TaskController();
  late NotifyHelper notifyHelper;
   @override
@@ -32,8 +34,15 @@ class _HomePageState extends State<HomePage> {
     // TODO: implement initState
     super.initState();
     notifyHelper=NotifyHelper();
-    notifyHelper.InitializationNotification();
-    notifyHelper.reaqurstpermission();
+    notifyHelper.requestIOSPermissions();
+    notifyHelper.initializeNotification(); 
+    
+   _taskController.getTasks().then((value) {
+      setState(() {
+        selcteddate=DateFormat.yMd().parse(DateFormat.yMd().format(selcteddate));
+        loaded=true;
+      });
+    });
   }
   @override
   Widget build(BuildContext context) {
@@ -50,30 +59,34 @@ class _HomePageState extends State<HomePage> {
                     const  SizedBox(height: 15,),
                     _add_Datebar(context),
                     SizedBox(height: 10,),
-                    _show_Task(),
+                    loaded?  _show_Task():CircularProgressIndicator(),
 
                 ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: ()=>Get.to(const AddTaskPage()),
+        onPressed: ()async{
+        await Get.to(const AddTaskPage());
+        await _taskController.getTasks();
+        },
         child:const Icon(Icons.edit),
         backgroundColor:primaryClr ,
       ),
     );
   }
 
+
   AppBar make_appbar(BuildContext context) {
     return AppBar(leading: IconButton(onPressed:(){
       ThemeServices().switchmode();
-        NotifyHelper().displayNotification(title: "theme changed",
-         body: '7aga bnt a7ba');
         //  NotifyHelper().sculdauled_notification();
       },
       icon:  Icon(Get.isDarkMode? Icons.wb_sunny_outlined:Icons.dark_mode_outlined),
       color: Get.isDarkMode?Colors.white:Colors.black,
     
-      ),actions:const<Widget> [
+      ),actions:<Widget> [
+        IconButton(onPressed: ()async=> await _taskController.deletealltasks()
+        , icon:Icon(Icons.delete,color: Get.isDarkMode?Colors.white:darkGreyClr,)),
         CircleAvatar(backgroundImage: AssetImage('images/person.jpeg'),
         radius: 25,),
          SizedBox(width: 10,)
@@ -94,7 +107,7 @@ class _HomePageState extends State<HomePage> {
                  ),
                  MyButton(label: '+Add Task', func: ()async{
                    await Get.to(const AddTaskPage());
-                   _taskController.getTask();
+                   await _taskController.getTasks();
                    })
       
       
@@ -127,74 +140,87 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
-
+ Future<void> _OnRefeash()async {
+  await _taskController.getTasks();
+ }
   Widget _show_Task() {
-    
     return Expanded(
-      child: ListView.builder(scrollDirection:
-       SizeConfig.orientation==Orientation.landscape?
-       Axis.horizontal:Axis.vertical,
-        itemCount: _taskController.tasklist.length,
-        itemBuilder:(BuildContext context,index)
-      {
-        Task task = _taskController.tasklist[index];
-        return  AnimationConfiguration.staggeredList(
-          position: index,
-          duration:Duration(milliseconds: 1375) ,
-          child: FadeInAnimation(
-            child: GestureDetector(onTap: ()=>showBottomSheet(context, task),
-              child: TaskTile(task),
+      child: Obx((){
+        if(_taskController.tasklist.isEmpty)
+                return _notaskmsg();
+        return RefreshIndicator(
+          onRefresh:() => _OnRefeash(),
+          child: ListView.builder(
+            physics:const AlwaysScrollableScrollPhysics(),
+            scrollDirection: SizeConfig.orientation==Orientation.landscape?
+            Axis.horizontal:Axis.vertical,
+            itemCount: _taskController.tasklist.length,
+            itemBuilder:( context,index)
+          {
+           
+            Task task = _taskController.tasklist[index];
+            int differ = DateFormat.yMd().parse(task.date!).difference(selcteddate).inDays;
+            bool weakly=(differ%7==0)&&task.repeat=='Weakly';
+            bool mounthly=(DateFormat.yMd().parse(task.date!).day==selcteddate.day)
+            &&task.repeat=="Mounthly";
+            if(!(task.repeat=='Daily'
+            ||weakly
+            ||mounthly
+            ||selcteddate==DateFormat.yMd().parse(task.date!)))
+            return Container();
+            (task.date);
+             return  AnimationConfiguration.staggeredList(
+              position: index,
+              duration:Duration(milliseconds: 500) ,
+              child: SlideAnimation(
+                horizontalOffset: 300,
+                child: FadeInAnimation(
+                  child: GestureDetector(onTap: ()=>showBottomSheet(context, task),
+                    child: TaskTile(task),
+                    ),
+                ),
               ),
-          ),
+            );
+          }),
         );
-      }),
+      },
+      ),
     );
-    // Expanded(
-    // child:GestureDetector(onTap: ()=>showBottomSheet(context, task),
-    //   child: TaskTile(task),
-    // )
-  //  Obx(
-  //   (){
-  //     if(_taskController.tasklist.isEmpty){
-  //       return _notaskmsg();
-  //     }
-  //     else
-  //       return Container(height: 0,);
-      
-  //   }
-  // )
   }
 
   Widget _notaskmsg() {
     return Stack(
       children: [
-        SingleChildScrollView(
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            direction: Axis.horizontal,
-            children: [
-             SizeConfig.orientation==Orientation.landscape? SizedBox(height: 6,):SizedBox(height: 220,),
-              SvgPicture.asset('images/task.svg',height: 98,
-              color: primaryClr.withOpacity(.5),
-              semanticsLabel: 'task',
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal:  40.0,vertical: 10),
-                child: Text('you dont have tasks\n add new task to your day pitch\n',style: Themes().subtitlestyle,textAlign: TextAlign.center,),
-              ), 
-              SizeConfig.orientation==Orientation.landscape? SizedBox(height: 120,):SizedBox(height: 180,),
-            ],
+        RefreshIndicator(
+          onRefresh: () => _OnRefeash(),
+          child: SingleChildScrollView(
+            physics:const AlwaysScrollableScrollPhysics(),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              direction: Axis.horizontal,
+              children: [
+               SizeConfig.orientation==Orientation.landscape? SizedBox(height: 6,):SizedBox(height: 220,),
+                SvgPicture.asset('images/task.svg',height: 98,
+                color: primaryClr.withOpacity(.5),
+                semanticsLabel: 'task',
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal:  40.0,vertical: 10),
+                  child: Text('you dont have tasks\n add new task to your day pitch\n',style: Themes().subtitlestyle,textAlign: TextAlign.center,),
+                ), 
+                SizeConfig.orientation==Orientation.landscape? SizedBox(height: 120,):SizedBox(height: 180,),
+              ],
+            ),
           ),
         )
       ],
     );
   }
  showBottomSheet(BuildContext context,Task task){
-   Get.bottomSheet(SingleChildScrollView(
-     child: Container(
-
-       child: Column(
+   Get.bottomSheet(Container(
+     child: SingleChildScrollView(
+       child: Column(mainAxisSize: MainAxisSize.min,
          children: [
            Flexible(child:Container(
               height: 6,
@@ -205,25 +231,42 @@ class _HomePageState extends State<HomePage> {
               ),
            ) ,),
            SizedBox(height: 20,),
+           _buildBottomSheet(label: 'show task', 
+           onTap:()=>Get.to(NotificationScreen(payload: '${task.title}|${task.note}|${task.startTime}|'))
+           , clr: primaryClr),
            task.isCompleted==1?Container():
-           _buildBottomSheet(label: 'Task completed', onTap:()=> Get.back() ,
+           _buildBottomSheet(label: 'Task completed', onTap:(){
+           notifyHelper.cancelnotifcition(task);
+            setState(() {
+             _taskController.markTaskcompleted(task);
+            });
+           Get.back();
+           } ,
             clr: primaryClr),
-            _buildBottomSheet(label: 'Delete Task', onTap:()=> Get.back() ,
-            clr: primaryClr),
+            _buildBottomSheet(label: 'Delete Task', onTap:(){
+            notifyHelper.cancelnotifcition(task);
+            setState(() {
+            _taskController.deleteTask(task);
+            }); 
+            Get.back();
+            } ,
+            clr: Colors.red[300]!),
             Divider(color:Get.isDarkMode? Colors.grey:darkGreyClr,),
             _buildBottomSheet(label: 'Cancel', onTap:()=> Get.back() ,
             clr: primaryClr),
             SizedBox(height: 20,)
+           
          ],
        ),
-       padding: const EdgeInsets.only(top: 4),
-       width: SizeConfig.screenWidth,
-       color:Theme.of(context).backgroundColor ,
-       height: (SizeConfig.orientation==Orientation.landscape)?
-       task.isCompleted==1?SizeConfig.screenHeight*.6:SizeConfig.screenHeight*.8
-       :task.isCompleted==1?SizeConfig.screenHeight*.38:SizeConfig.screenHeight*.45,
      ),
-   ));
+     padding: const EdgeInsets.only( top:4),
+     width: SizeConfig.screenWidth,
+     color:Theme.of(context).backgroundColor ,
+     height: (SizeConfig.orientation==Orientation.landscape)?
+     task.isCompleted==1?SizeConfig.screenHeight*.6:SizeConfig.screenHeight*.8
+     :task.isCompleted==1?SizeConfig.screenHeight*.38:SizeConfig.screenHeight*.45,
+   )
+   );
  }
   _buildBottomSheet({
       required String label,
@@ -234,7 +277,7 @@ class _HomePageState extends State<HomePage> {
        return GestureDetector(onTap: onTap,
          child: Container(
            margin:  const EdgeInsets.symmetric(vertical: 4),
-           height: 65,
+           height: 53,
            width: SizeConfig.screenWidth*.9,
            decoration: BoxDecoration(
              border: Border.all(
