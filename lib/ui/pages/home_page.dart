@@ -17,36 +17,20 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+class HomePage extends StatelessWidget {
+   HomePage({Key? key}) : super(key: key);
 
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  bool loaded=false;
-  DateTime selcteddate= DateTime.now() ;
-  final TaskController _taskController=TaskController();
+ 
+  
+  final TaskController _taskController=Get.find<TaskController>();
  late NotifyHelper notifyHelper;
+  
   @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
+  Widget build(BuildContext context) {
     notifyHelper=NotifyHelper();
     notifyHelper.requestIOSPermissions();
     notifyHelper.initializeNotification(); 
-    
-   _taskController.getTasks().then((value) {
-      setState(() {
-        selcteddate=DateFormat.yMd().parse(DateFormat.yMd().format(selcteddate));
-        loaded=true;
-      });
-    });
-  }
-  @override
-  Widget build(BuildContext context) {
-   SizeConfig().init(context);     
+    SizeConfig().init(context);     
       return Scaffold(
         backgroundColor: context.theme.backgroundColor,
       appBar: make_appbar(context),
@@ -57,9 +41,9 @@ class _HomePageState extends State<HomePage> {
                    const SizedBox(height: 10,),
                     _add_Taskbar(),
                     const  SizedBox(height: 15,),
-                    _add_Datebar(context),
+                    Obx(()=> _add_Datebar(context)),
                     SizedBox(height: 10,),
-                    loaded?  _show_Task():CircularProgressIndicator(),
+                    Obx(()=>_taskController.loaded.value?  _show_Task():CircularProgressIndicator()),
 
                 ],
         ),
@@ -67,7 +51,7 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: ()async{
         await Get.to(const AddTaskPage());
-        await _taskController.getTasks();
+        _taskController.getTasks();
         },
         child:const Icon(Icons.edit),
         backgroundColor:primaryClr ,
@@ -115,33 +99,32 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _add_Datebar(BuildContext context) {
-    return DatePicker(
-      DateTime.now(),
-      width: 80,
-      height: 100,
-      initialSelectedDate:selcteddate ,
-      selectionColor: primaryClr,
-      selectedTextColor: Colors.white,
-      monthTextStyle: GoogleFonts.lato(textStyle: const TextStyle(
-          color:Colors.grey
-          ,fontSize: 16 )),
-           dayTextStyle: GoogleFonts.lato(textStyle: const TextStyle(
-          color:Colors.grey
-          ,fontSize: 20
-          ,fontWeight:FontWeight.bold )),
-           dateTextStyle: GoogleFonts.lato(textStyle: const TextStyle(
-          color:Colors.grey
-          ,fontSize: 18
-          ,fontWeight:FontWeight.bold )),
-      onDateChange: (date){
-        setState(() {
-          selcteddate=date;
-        });
-      },
+  return DatePicker(
+        DateTime.now(),
+        width: 80,
+        height: 100,
+        initialSelectedDate:_taskController.selcteddate.value ,
+        selectionColor: primaryClr,
+        selectedTextColor: Colors.white,
+        monthTextStyle: GoogleFonts.lato(textStyle: const TextStyle(
+            color:Colors.grey
+            ,fontSize: 16 )),
+             dayTextStyle: GoogleFonts.lato(textStyle: const TextStyle(
+            color:Colors.grey
+            ,fontSize: 20
+            ,fontWeight:FontWeight.bold )),
+             dateTextStyle: GoogleFonts.lato(textStyle: const TextStyle(
+            color:Colors.grey
+            ,fontSize: 18
+            ,fontWeight:FontWeight.bold )),
+        onDateChange:  (date){
+          _taskController.updatedate(date);
+        },
+     
     );
   }
  Future<void> _OnRefeash()async {
-  await _taskController.getTasks();
+   _taskController.getTasks();
  }
   Widget _show_Task() {
     return Expanded(
@@ -157,16 +140,16 @@ class _HomePageState extends State<HomePage> {
             itemCount: _taskController.tasklist.length,
             itemBuilder:( context,index)
           {
-           
+          return Obx((){
             Task task = _taskController.tasklist[index];
-            int differ = DateFormat.yMd().parse(task.date!).difference(selcteddate).inDays;
+            int differ = DateFormat.yMd().parse(task.date!).difference(_taskController.selcteddate.value).inDays;
             bool weakly=(differ%7==0)&&task.repeat=='Weakly';
-            bool mounthly=(DateFormat.yMd().parse(task.date!).day==selcteddate.day)
+            bool mounthly=(DateFormat.yMd().parse(task.date!).day==_taskController.selcteddate.value.day)
             &&task.repeat=="Mounthly";
             if(!(task.repeat=='Daily'
             ||weakly
             ||mounthly
-            ||selcteddate==DateFormat.yMd().parse(task.date!)))
+            ||_taskController.selcteddate.value==DateFormat.yMd().parse(task.date!)))
             return Container();
             (task.date);
              return  AnimationConfiguration.staggeredList(
@@ -180,7 +163,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                 ),
               ),
-            );
+            );}
+           );
           }),
         );
       },
@@ -237,17 +221,13 @@ class _HomePageState extends State<HomePage> {
            task.isCompleted==1?Container():
            _buildBottomSheet(label: 'Task completed', onTap:(){
            notifyHelper.cancelnotifcition(task);
-            setState(() {
-             _taskController.markTaskcompleted(task);
-            });
+           _taskController.markTaskcompleted(task);
            Get.back();
            } ,
             clr: primaryClr),
             _buildBottomSheet(label: 'Delete Task', onTap:(){
             notifyHelper.cancelnotifcition(task);
-            setState(() {
             _taskController.deleteTask(task);
-            }); 
             Get.back();
             } ,
             clr: Colors.red[300]!),
@@ -255,7 +235,6 @@ class _HomePageState extends State<HomePage> {
             _buildBottomSheet(label: 'Cancel', onTap:()=> Get.back() ,
             clr: primaryClr),
             SizedBox(height: 20,)
-           
          ],
        ),
      ),

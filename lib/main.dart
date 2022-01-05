@@ -1,10 +1,8 @@
 
+import 'package:TODO/controllers/task_controller.dart';
 import 'package:TODO/db/db_helper.dart';
-import 'package:TODO/services/notification_services.dart';
 import 'package:TODO/services/theme_services.dart';
 import 'package:TODO/ui/pages/home_page.dart';
-import 'package:TODO/ui/pages/notification_screen.dart';
-import 'package:TODO/ui/pages/test.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -25,6 +23,7 @@ class MyApp extends StatelessWidget {
   @override
 
   Widget build(BuildContext context) {
+    Get.put(TaskController());
     return  GetMaterialApp(
       title: 'Flutter Demo',
       theme:th.Themes.light,
